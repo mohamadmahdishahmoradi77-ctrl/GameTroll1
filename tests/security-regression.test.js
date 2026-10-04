@@ -1,0 +1,16 @@
+import fs from 'node:fs';
+import assert from 'node:assert/strict';
+const root=new URL('..',import.meta.url).pathname;
+const server=fs.readFileSync(root+'server.js','utf8');
+const env=fs.readFileSync(root+'.env.example','utf8');
+assert.match(server,/app\.get\('\/',\(_req,res\)=>res\.sendFile/);
+assert.doesNotMatch(server,/app\.use\(express\.static\(ROOT\)\)/);
+assert.match(server,/SESSION_SECRET/);
+assert.match(server,/hashSessionToken/);
+assert.match(server,/legacyHashToken/);
+assert.match(server,/LAST_ADMIN/);
+assert.match(server,/CANNOT_DEMOTE_OR_BLOCK_SELF/);
+assert.match(server,/IMAGE_DIMENSIONS_TOO_LARGE/);
+assert.match(server,/imageUploadLimiter/);
+assert.match(env,/SESSION_SECRET=/);
+console.log('Security regression checks passed');
