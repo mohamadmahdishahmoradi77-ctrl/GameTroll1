@@ -1,0 +1,101 @@
+-- GAME TROLL MySQL complete schema alignment.
+-- Safe to run after 001/002: every object uses IF NOT EXISTS.
+-- IMPORTANT: back up the target database before production migration.
+
+CREATE TABLE IF NOT EXISTS sessions (
+ id VARCHAR(191) PRIMARY KEY, user_id VARCHAR(191) NOT NULL, expires_at TIMESTAMP NOT NULL,
+ revoked_at TIMESTAMP NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ INDEX idx_sessions_user (user_id), INDEX idx_sessions_expiry (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS password_resets (
+ id VARCHAR(191) PRIMARY KEY, user_id VARCHAR(191) NOT NULL, token_hash VARCHAR(255) NOT NULL UNIQUE,
+ expires_at TIMESTAMP NOT NULL, used_at TIMESTAMP NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ INDEX idx_password_resets_user (user_id), INDEX idx_password_resets_expiry (expires_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS user_settings (
+ user_id VARCHAR(191) PRIMARY KEY, support_notifications TINYINT NOT NULL DEFAULT 1,
+ order_notifications TINYINT NOT NULL DEFAULT 1, content_notifications TINYINT NOT NULL DEFAULT 1
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS games (
+ id VARCHAR(191) PRIMARY KEY, name VARCHAR(255) NOT NULL, short_description TEXT, description TEXT, img VARCHAR(1000),
+ platform VARCHAR(100), console VARCHAR(100), genre VARCHAR(100), year INT, version VARCHAR(100), tags VARCHAR(500), pack VARCHAR(191),
+ link VARCHAR(2000), status VARCHAR(30) NOT NULL DEFAULT 'published', created_by VARCHAR(191),
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ INDEX idx_games_search (name,console,platform,genre,year,version,tags,pack), INDEX idx_games_advanced (status,console,platform,genre,year,pack,created_at),
+ INDEX idx_games_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS packs (
+ id VARCHAR(191) PRIMARY KEY, name VARCHAR(255) NOT NULL, short TEXT, description TEXT, img VARCHAR(1000),
+ price INT DEFAULT 0, old_price INT DEFAULT 0, status VARCHAR(30) NOT NULL DEFAULT 'published', link VARCHAR(2000),
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ INDEX idx_packs_name (name)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS pack_games (
+ pack_id VARCHAR(191) NOT NULL, game_id VARCHAR(191) NOT NULL, PRIMARY KEY(pack_id,game_id), INDEX idx_pack_games_game(game_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS news (
+ id VARCHAR(191) PRIMARY KEY, title VARCHAR(500) NOT NULL, summary TEXT, content TEXT, img VARCHAR(1000), published_at TIMESTAMP NULL,
+ status VARCHAR(30) NOT NULL DEFAULT 'published', created_by VARCHAR(191), created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_news_published(status,published_at,created_at), INDEX idx_news_title(title)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS tutorials (
+ id VARCHAR(191) PRIMARY KEY, title VARCHAR(500) NOT NULL, content TEXT, category VARCHAR(100), img VARCHAR(1000), published_at TIMESTAMP NULL,
+ status VARCHAR(30) NOT NULL DEFAULT 'published', created_by VARCHAR(191), created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_tutorials_title(title)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS images (
+ id VARCHAR(191) PRIMARY KEY, owner_id VARCHAR(191), filename VARCHAR(500), mime_type VARCHAR(150), size INT, path VARCHAR(2000),
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_images_created(created_at,owner_id), INDEX idx_images_owner(owner_id,created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS orders (
+ id VARCHAR(191) PRIMARY KEY, user_id VARCHAR(191), customer_name VARCHAR(255), customer_contact VARCHAR(500), item_type VARCHAR(100) NOT NULL,
+ item_id VARCHAR(191) NOT NULL, item_name VARCHAR(500), amount INT DEFAULT 0, status VARCHAR(30) NOT NULL DEFAULT 'pending', receipt VARCHAR(2000), note TEXT,
+ approved_at TIMESTAMP NULL, approved_by VARCHAR(191), created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ INDEX idx_orders_user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS ticket_messages (
+ id VARCHAR(191) PRIMARY KEY, ticket_id VARCHAR(191) NOT NULL, user_id VARCHAR(191), is_admin TINYINT NOT NULL DEFAULT 0, message TEXT NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_ticket_messages_ticket(ticket_id), INDEX idx_ticket_messages_user(user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS broken_links (
+ id VARCHAR(191) PRIMARY KEY, user_id VARCHAR(191), game_id VARCHAR(191), pack_id VARCHAR(191), url VARCHAR(2000), reason VARCHAR(1000) NOT NULL,
+ status VARCHAR(30) NOT NULL DEFAULT 'open', admin_note TEXT, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS pack_ratings (
+ user_id VARCHAR(191) NOT NULL, pack_id VARCHAR(191) NOT NULL, rating INT NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, PRIMARY KEY(user_id,pack_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS pack_reviews (
+ id VARCHAR(191) PRIMARY KEY, user_id VARCHAR(191) NOT NULL, pack_id VARCHAR(191) NOT NULL, body TEXT NOT NULL, status VARCHAR(30) NOT NULL DEFAULT 'pending',
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ INDEX idx_pack_reviews_pack(pack_id,status), INDEX idx_pack_reviews_user(user_id,created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS review_reports (
+ id VARCHAR(191) PRIMARY KEY, review_id VARCHAR(191) NOT NULL, user_id VARCHAR(191) NOT NULL, reason VARCHAR(1000) NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_review_reports_review(review_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS pack_review_reports (
+ id VARCHAR(191) PRIMARY KEY, review_id VARCHAR(191) NOT NULL, user_id VARCHAR(191) NOT NULL, reason VARCHAR(1000) NOT NULL,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_pack_review_reports_review(review_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS audit_logs (
+ id VARCHAR(191) PRIMARY KEY, admin_user_id VARCHAR(191), action VARCHAR(100) NOT NULL, entity_type VARCHAR(100), entity_id VARCHAR(191), metadata TEXT,
+ created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP, INDEX idx_audit_created(created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS site_status (
+ `key` VARCHAR(191) PRIMARY KEY, status VARCHAR(30) NOT NULL, message TEXT, updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS site_settings (
+ `key` VARCHAR(191) PRIMARY KEY, value TEXT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+CREATE TABLE IF NOT EXISTS backups (
+ id VARCHAR(191) PRIMARY KEY, filename VARCHAR(500) NOT NULL, path VARCHAR(2000) NOT NULL, created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+ALTER TABLE users MODIFY id VARCHAR(191) NOT NULL, MODIFY username VARCHAR(191) NOT NULL, MODIFY email VARCHAR(191) NOT NULL;
+ALTER TABLE favorites MODIFY user_id VARCHAR(191) NOT NULL, MODIFY game_id VARCHAR(191) NOT NULL;
+ALTER TABLE tickets MODIFY id VARCHAR(191) NOT NULL, MODIFY user_id VARCHAR(191) NOT NULL;
+ALTER TABLE notifications MODIFY id VARCHAR(191) NOT NULL;
+ALTER TABLE ratings MODIFY user_id VARCHAR(191) NOT NULL, MODIFY game_id VARCHAR(191) NOT NULL;
+ALTER TABLE reviews MODIFY id VARCHAR(191) NOT NULL, MODIFY user_id VARCHAR(191) NOT NULL, MODIFY game_id VARCHAR(191) NOT NULL;
